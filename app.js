@@ -276,7 +276,7 @@ function vistaFuentes() {
       <li>Evangelios de Matityah-Mateo, Markos-Marcos, Hilel-Lucas y Yojanan-Juan</li>
       <li>Nehemías 10 y 13; Ezequiel 46; Amós 8; Zacarías 7; 2 Crónicas 31</li>
     </ul>
-    <p class="texto">Am Israel Jai — Editor: Mosheh Ben Israel<br>Contacto: bibliatoraviviente@gmail.com</p>
+    <p class="texto">Am Israel Jai — Editor: Yohanan Ben Israel<br>Contacto: yohanan082706@gmail.com</p>
     <div class="instalar-box">
       <b>Cómo instalar esta app en tu celular:</b><br>
       Android (Chrome): menú ⋮ → "Añadir a pantalla de inicio".<br>
