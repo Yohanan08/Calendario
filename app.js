@@ -173,9 +173,11 @@ function vistaMes() {
       html += `<span class="omer">Omer ${d.omerDia} (sem.${semana}·${diaEnSemana})</span>`;
     }
     if (d.eventos.length) {
-      let nombre = d.eventos[0];
-      if (nombre.length > 26) nombre = nombre.slice(0, 24) + "…";
-      html += `<span class="evt">${nombre}</span>`;
+      d.eventos.slice(0, 2).forEach((nombreEvt) => {
+        let nombre = nombreEvt;
+        if (nombre.length > 24) nombre = nombre.slice(0, 22) + "…";
+        html += `<span class="evt">${nombre}</span>`;
+      });
     }
     el.innerHTML = html;
     grid.appendChild(el);
@@ -564,7 +566,7 @@ function generarPDF() {
         doc.setTextColor(...ROJO);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(5.3);
-        let nombre = d.eventos[0];
+        let nombre = d.eventos.join(" / ");
         const lines = doc.splitTextToSize(nombre, colW - 6);
         doc.text(lines.slice(0, 2), cx + 3, y + 33);
       }

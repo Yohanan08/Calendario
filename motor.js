@@ -123,7 +123,7 @@ const NOMBRES_MESES_BIBLICOS = [
   "Mes 4",
   "Mes 5",
   "Mes 6",
-  "Mes 7 · Yom Kipur / Sukot",
+  "Mes 7 · Yom Teruah/ Yom Kipur / Sukot",
   "Mes 8",
   "Mes 9",
   "Mes 10",
