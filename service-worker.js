@@ -1,4 +1,4 @@
-const CACHE = "calendario-eterno-v3";
+const CACHE = "calendario-eterno-v4";
 const ARCHIVOS = [
   "./index.html",
   "./motor.js",

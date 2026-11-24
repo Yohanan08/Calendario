@@ -298,8 +298,10 @@ setInterval(revisarAvisos, 30 * 60 * 1000);
 // ------------------------------------------------------------------
 // COMPARTIR (WhatsApp / menú del celular)
 // ------------------------------------------------------------------
+// El "?v=3" hace que WhatsApp lea de nuevo la tarjeta con la imagen
+// (WhatsApp guarda en memoria la vista previa de cada enlace).
 function urlApp() {
-  return location.origin + location.pathname.replace(/index\.html$/, "");
+  return location.origin + location.pathname.replace(/index\.html$/, "") + "?v=3";
 }
 
 async function compartir(texto) {
