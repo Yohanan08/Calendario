@@ -4,7 +4,8 @@
 document.getElementById("logoHeader").src = LOGO_B64;
 document.getElementById("logoFooter").src = LOGO_B64;
 
-const HOY = new Date();
+// "Hoy" se toma de la fecha civil de Jerusalén, no de la zona del celular
+let HOY = ahoraEnJerusalen().fechaUTC;
 // Año gregoriano "ancla" con el que se calcula el año bíblico que contiene hoy,
 // si hoy ya pasó el inicio de año de ESTE año gregoriano, seguimos en ese año bíblico;
 // si no, el año bíblico vigente empezó el año gregoriano anterior.
@@ -18,7 +19,7 @@ const estado = {
   anio: anioBiblicoVigente(),
   dias: null,
   mes: 1,
-  vista: "mes",
+  vista: "hoy",
 };
 
 function cargarAno(anio) {
@@ -86,7 +87,8 @@ function mostrarToast(msg) {
 function render() {
   const main = document.getElementById("main");
   main.innerHTML = "";
-  if (estado.vista === "mes") main.appendChild(vistaMes());
+  if (estado.vista === "hoy") main.appendChild(vistaHoy());
+  else if (estado.vista === "mes") main.appendChild(vistaMes());
   else if (estado.vista === "resumen") main.appendChild(vistaResumen());
   else if (estado.vista === "advertencia") main.appendChild(vistaAdvertencia());
   else if (estado.vista === "fuentes") main.appendChild(vistaFuentes());
@@ -110,6 +112,278 @@ function selectorAnioEl() {
   div.appendChild(sel);
   return div;
 }
+
+function esHoy(d) {
+  return d.fechaGregoriana.getTime() === HOY.getTime();
+}
+
+function dos(n) {
+  return String(n).padStart(2, "0");
+}
+
+// ------------------------------------------------------------------
+// RELOJ DE JERUSALÉN (se actualiza cada segundo)
+// ------------------------------------------------------------------
+function actualizarReloj() {
+  const j = ahoraEnJerusalen();
+  const hora = `${dos(j.hora)}:${dos(j.minuto)}:${dos(j.segundo)}`;
+  const elHeader = document.getElementById("relojHeader");
+  if (elHeader) elHeader.textContent = `Jerusalén ${dos(j.hora)}:${dos(j.minuto)}`;
+  const elGrande = document.getElementById("relojGrande");
+  if (elGrande) elGrande.textContent = hora;
+  // Si cambió el día en Jerusalén (medianoche), recalcular todo
+  if (j.fechaUTC.getTime() !== HOY.getTime()) {
+    HOY = j.fechaUTC;
+    cargarAno(anioBiblicoVigente());
+    render();
+  }
+}
+setInterval(actualizarReloj, 1000);
+
+function vistaHoy() {
+  const wrap = document.createElement("div");
+  const j = ahoraEnJerusalen();
+  const sol = puestaDelSolJerusalen(j);
+  const yaPusoSol = j.hora * 60 + j.minuto >= sol.totalMin;
+  const hoyBib = buscarDiaBiblico(HOY);
+
+  // --- Reloj y fecha de hoy ---
+  const card = document.createElement("div");
+  card.className = "card card-hoy";
+  let fechaBib = "Días entre años (fuera de la cuenta de 364)";
+  let extra = "";
+  if (hoyBib) {
+    const d = hoyBib.dia;
+    fechaBib = `${NOMBRES_DIAS_BIBLICO[d.diaSemanaIdx]} · Día ${d.diaDelMes} del Mes ${d.mes}`;
+    if (d.eventos.length) extra += `<div class="hoy-evento">✡ ${d.eventos.join(" / ")}</div>`;
+    if (d.omerDia) extra += `<div class="hoy-omer">Día ${d.omerDia} del conteo del Omer</div>`;
+    if (yaPusoSol) {
+      const man = buscarDiaBiblico(new Date(HOY.getTime() + 86400000));
+      if (man) {
+        const m = man.dia;
+        extra += `<div class="hoy-nota">El sol ya se puso en Jerusalén: comenzó el
+          <b>${NOMBRES_DIAS_BIBLICO[m.diaSemanaIdx]}, día ${m.diaDelMes} del Mes ${m.mes}</b>
+          ${m.eventos.length ? "· " + m.eventos.join(" / ") : ""}</div>`;
+      }
+    }
+  }
+  card.innerHTML = `
+    <div class="reloj-etiqueta">Hora en Jerusalén</div>
+    <div class="reloj-grande" id="relojGrande">${dos(j.hora)}:${dos(j.minuto)}:${dos(j.segundo)}</div>
+    <div class="hoy-fecha">${fechaBib}</div>
+    <div class="hoy-sub">Romano: ${fechaLarga(HOY)} · Hillel: ${fechaHebreaTexto(HOY)}</div>
+    <div class="hoy-sub">Puesta del sol en Jerusalén hoy: ${dos(sol.hora)}:${dos(sol.minuto)}</div>
+    ${extra}`;
+  wrap.appendChild(card);
+
+  // --- Próxima cita designada ---
+  const prox = proximaCitaDesignada(HOY);
+  if (prox) {
+    const d = prox.dia;
+    const c2 = document.createElement("div");
+    c2.className = "card card-cita";
+    c2.innerHTML = `
+      <div class="cita-etiqueta">Próxima cita designada</div>
+      <div class="cita-nombre">${d.eventos.join(" / ")}</div>
+      <div class="cita-faltan"><span>${prox.faltan}</span> ${prox.faltan === 1 ? "día" : "días"}</div>
+      <div class="hoy-sub">${NOMBRES_DIAS_BIBLICO[d.diaSemanaIdx]} · Mes ${d.mes}, día ${d.diaDelMes} · ${fechaLarga(d.fechaGregoriana)}</div>
+      <div class="cita-botones">
+        <button class="btn-blanco" id="btnVerCita">Ver detalle</button>
+        <button class="btn-blanco" id="btnCompartirCita">Compartir</button>
+      </div>`;
+    c2.querySelector("#btnVerCita").addEventListener("click", () => abrirFicha(d));
+    c2.querySelector("#btnCompartirCita").addEventListener("click", () =>
+      compartir(
+        `✡ ${textoFaltan(prox.faltan)} para ${d.eventos.join(" / ")}\n` +
+          `${NOMBRES_DIAS_BIBLICO[d.diaSemanaIdx]}, Mes ${d.mes} día ${d.diaDelMes} · ${fechaLarga(d.fechaGregoriana)}\n` +
+          `Calendario del Eterno · Yeshúa — La Torá Viviente`,
+      ),
+    );
+    wrap.appendChild(c2);
+  }
+
+  // --- Cuentas regresivas ---
+  const c3 = document.createElement("div");
+  c3.className = "card";
+  c3.innerHTML = `<h3 class="titulo-seccion">¿Cuánto falta para las Fiestas?</h3>`;
+  const lista = document.createElement("div");
+  lista.className = "lista-eventos";
+  // Shabat
+  const diasShabat = (6 - HOY.getUTCDay() + 7) % 7;
+  const filas = [
+    { nombre: "Shabat", faltan: diasShabat, fecha: new Date(HOY.getTime() + diasShabat * 86400000), mes: null },
+    ...cuentasRegresivas(HOY),
+  ];
+  filas.forEach((f) => {
+    const row = document.createElement("div");
+    row.className = "evento-row";
+    row.innerHTML = `<div class="fecha cuenta">${f.faltan}<small>${f.faltan === 1 ? "día" : "días"}</small></div>
+      <div class="detalle">
+        <div class="nombre">${textoFaltan(f.faltan)} para ${f.nombre}</div>
+        <div class="sub">${f.mes ? `Mes ${f.mes}, día ${f.dia} · ` : ""}${fechaLarga(f.fecha)}</div>
+      </div>`;
+    const diaF = buscarDiaBiblico(f.fecha);
+    if (diaF) {
+      row.classList.add("clicable");
+      row.addEventListener("click", () => abrirFicha(diaF.dia));
+    }
+    lista.appendChild(row);
+  });
+  c3.appendChild(lista);
+  wrap.appendChild(c3);
+  wrap.appendChild(tarjetaAvisos());
+  return wrap;
+}
+
+// ------------------------------------------------------------------
+// AVISOS (notificaciones)
+// ------------------------------------------------------------------
+function tarjetaAvisos() {
+  const card = document.createElement("div");
+  card.className = "card";
+  const soporta = "Notification" in window && "serviceWorker" in navigator;
+  const permiso = soporta ? Notification.permission : "no";
+  let estadoTxt, boton = "";
+  if (!soporta) {
+    estadoTxt = "Este navegador no permite avisos. En iPhone, primero instala la app en la pantalla de inicio.";
+  } else if (permiso === "granted") {
+    estadoTxt = "✓ Avisos activados. Te avisaremos el día antes de cada fiesta, el mismo día y cada viernes antes del Shabat.";
+  } else if (permiso === "denied") {
+    estadoTxt = "Los avisos están bloqueados. Actívalos en los ajustes del navegador para este sitio.";
+  } else {
+    estadoTxt = "Recibe un aviso el día antes de cada fiesta, el mismo día y cada viernes antes del Shabat.";
+    boton = `<button class="btn-azul" id="btnAvisos">🔔 Activar avisos</button>`;
+  }
+  card.innerHTML = `<h3 class="titulo-seccion">Avisos de las Fiestas</h3>
+    <p class="texto" style="margin:0 0 10px">${estadoTxt}</p>${boton}`;
+  const b = card.querySelector("#btnAvisos");
+  if (b) b.addEventListener("click", activarAvisos);
+  return card;
+}
+
+async function activarAvisos() {
+  try {
+    const permiso = await Notification.requestPermission();
+    if (permiso === "granted") {
+      const reg = await navigator.serviceWorker.ready;
+      // Revisión en segundo plano (solo Chrome Android con la app instalada)
+      try {
+        if ("periodicSync" in reg) {
+          await reg.periodicSync.register("avisos-calendario", {
+            minInterval: 6 * 60 * 60 * 1000,
+          });
+        }
+      } catch (e) {}
+      await reg.showNotification("Avisos activados ✓", {
+        body: "Te avisaremos de las Fiestas y del Shabat. ¡Shalom!",
+        icon: "icon-192.png",
+      });
+      await enviarAvisosPendientes(reg);
+      mostrarToast("Avisos activados ✓");
+    }
+  } catch (e) {
+    mostrarToast("No se pudieron activar los avisos");
+  }
+  render();
+}
+
+// Mientras la app está abierta, revisar avisos al abrir y cada 30 minutos
+function revisarAvisos() {
+  if (!("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.ready.then((reg) => enviarAvisosPendientes(reg)).catch(() => {});
+}
+revisarAvisos();
+setInterval(revisarAvisos, 30 * 60 * 1000);
+
+// ------------------------------------------------------------------
+// COMPARTIR (WhatsApp / menú del celular)
+// ------------------------------------------------------------------
+function urlApp() {
+  return location.origin + location.pathname.replace(/index\.html$/, "");
+}
+
+async function compartir(texto) {
+  const url = urlApp();
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "Calendario del Eterno", text: texto, url });
+      return;
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+    }
+  }
+  window.open("https://wa.me/?text=" + encodeURIComponent(texto + "\n" + url), "_blank");
+}
+
+// ------------------------------------------------------------------
+// FICHA DE UN DÍA (al tocarlo)
+// ------------------------------------------------------------------
+function abrirFicha(d) {
+  cerrarFicha();
+  const fichas = fichasDelDia(d);
+  const faltan = diasEntre(HOY, d.fechaGregoriana);
+  let cuando = "";
+  if (faltan === 0) cuando = "Es hoy";
+  else if (faltan > 0) cuando = textoFaltan(faltan);
+  else cuando = faltan === -1 ? "Fue ayer" : `Fue hace ${-faltan} días`;
+
+  let html = `<div class="ficha-cab">
+      <div>
+        <div class="ficha-fecha">${NOMBRES_DIAS_BIBLICO[d.diaSemanaIdx]} · Mes ${d.mes}, día ${d.diaDelMes}</div>
+        <div class="ficha-sub">${d.estacion} · ${cuando}</div>
+      </div>
+      <button class="ficha-cerrar" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="ficha-cuerpo">
+      <div class="ficha-ref">Romano: ${fechaLarga(d.fechaGregoriana)}<br>Hillel: ${d.fechaHebreaTexto}</div>`;
+  if (d.omerDia) {
+    const sem = Math.ceil(d.omerDia / 7);
+    html += `<div class="ficha-omer">Día ${d.omerDia} del conteo del Omer · semana ${sem}</div>`;
+  }
+  if (d.eventos.length) {
+    html += `<ul class="ficha-eventos">${d.eventos.map((e) => `<li>${e}</li>`).join("")}</ul>`;
+  }
+  fichas.forEach((f) => {
+    html += `<div class="ficha-fiesta">
+        <h4>${f.titulo}</h4>
+        <p>${f.texto}</p>
+        <div class="ficha-citas">${f.citas.map((c) => `<span>${c}</span>`).join("")}</div>
+      </div>`;
+  });
+  if (!d.eventos.length && !fichas.length) {
+    html += `<p class="ficha-vacio">Día común de trabajo.</p>`;
+  }
+  html += `<button class="btn-azul" id="btnCompartirFicha">Compartir este día</button></div>`;
+
+  const fondo = document.createElement("div");
+  fondo.className = "ficha-fondo";
+  fondo.id = "ficha";
+  const caja = document.createElement("div");
+  caja.className = "ficha";
+  caja.innerHTML = html;
+  fondo.appendChild(caja);
+  document.body.appendChild(fondo);
+  fondo.addEventListener("click", (e) => {
+    if (e.target === fondo) cerrarFicha();
+  });
+  caja.querySelector(".ficha-cerrar").addEventListener("click", cerrarFicha);
+  caja.querySelector("#btnCompartirFicha").addEventListener("click", () => {
+    const titulo = d.eventos.length ? d.eventos.join(" / ") : (d.esShabat ? "Shabat" : "Calendario del Eterno");
+    let texto = `✡ ${titulo}\n${NOMBRES_DIAS_BIBLICO[d.diaSemanaIdx]}, Mes ${d.mes} día ${d.diaDelMes} · ${fechaLarga(d.fechaGregoriana)}`;
+    if (faltan > 0) texto += `\n${textoFaltan(faltan)}`;
+    if (fichas.length) texto += `\n📖 ${fichas[0].citas.join(" · ")}`;
+    texto += `\nCalendario del Eterno · Yeshúa — La Torá Viviente`;
+    compartir(texto);
+  });
+}
+
+function cerrarFicha() {
+  const f = document.getElementById("ficha");
+  if (f) f.remove();
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") cerrarFicha();
+});
 
 function vistaMes() {
   const wrap = document.createElement("div");
@@ -163,7 +437,8 @@ function vistaMes() {
     el.className =
       "dia" +
       (d.esShabat ? " shabat" : "") +
-      (d.eventos.length ? " festivo" : "");
+      (d.eventos.length ? " festivo" : "") +
+      (esHoy(d) ? " hoy" : "");
     let html = `<span class="num">${d.diaDelMes}</span>`;
     html += `<span class="greg">${fechaCorta(d.fechaGregoriana)}</span>`;
     html += `<span class="heb">${d.fechaHebreaTexto.split(" ").slice(0, 3).join(" ")}</span>`;
@@ -180,6 +455,7 @@ function vistaMes() {
       });
     }
     el.innerHTML = html;
+    el.addEventListener("click", () => abrirFicha(d));
     grid.appendChild(el);
   });
   card.appendChild(grid);
@@ -201,6 +477,8 @@ function vistaMes() {
           <div class="nombre">${d.eventos.join(" / ")}</div>
           <div class="sub">${NOMBRES_DIAS_BIBLICO[d.diaSemanaIdx]} · Romano: ${fechaCorta(d.fechaGregoriana)} · Hillel: ${d.fechaHebreaTexto}</div>
         </div>`;
+      row.classList.add("clicable");
+      row.addEventListener("click", () => abrirFicha(d));
       lista.appendChild(row);
     });
     card2.appendChild(lista);
@@ -242,6 +520,8 @@ function vistaResumen() {
         <div class="nombre">${d.eventos.join(" / ")}</div>
         <div class="sub">${NOMBRES_DIAS_BIBLICO[d.diaSemanaIdx]} · Romano: ${fechaCorta(d.fechaGregoriana)} · Hillel: ${d.fechaHebreaTexto}</div>
       </div>`;
+    row.classList.add("clicable");
+    row.addEventListener("click", () => abrirFicha(d));
     lista.appendChild(row);
   });
   card2.appendChild(lista);
@@ -318,17 +598,18 @@ function vistaFuentes() {
 function generarPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "pt", format: "letter" });
-  const NAVY = [11, 26, 48],
-    GOLD = [191, 161, 95],
-    GOLDLIGHT = [233, 223, 200],
-    ROJO = [122, 31, 31];
+  // Colores de la bandera de Israel: azul tejelet y blanco
+  const NAVY = [0, 56, 184],
+    GOLD = [0, 56, 184],
+    GOLDLIGHT = [230, 238, 252],
+    ROJO = [0, 40, 130];
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
 
   function marco(tituloDerecha) {
     doc.setFillColor(...NAVY);
     doc.rect(0, 0, W, 32, "F");
-    doc.setTextColor(...GOLD);
+    doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.text("YESHÚA — LA TORÁ VIVIENTE", 20, 20);
@@ -351,7 +632,7 @@ function generarPDF() {
         140 * (171 / 1280),
       );
     } catch (e) {}
-    doc.setTextColor(...GOLD);
+    doc.setTextColor(255, 255, 255);
     doc.setFontSize(6.5);
     doc.text("bibliatoraviviente@gmail.com", W / 2, H - 8, { align: "center" });
   }
@@ -473,9 +754,9 @@ function generarPDF() {
       filaEncabezado();
     }
     doc.setFillColor(
-      filaPar ? 255 : 233,
-      filaPar ? 255 : 223,
-      filaPar ? 255 : 200,
+      filaPar ? 255 : 230,
+      filaPar ? 255 : 238,
+      filaPar ? 255 : 252,
     );
     doc.rect(40, y, W - 80, 15, "F");
     doc.setDrawColor(...GOLD);
@@ -539,9 +820,9 @@ function generarPDF() {
     diasMes.forEach((d) => {
       const cx = 40 + col * colW;
       doc.setFillColor(
-        d.esShabat ? 233 : 255,
-        d.esShabat ? 223 : 255,
-        d.esShabat ? 200 : 255,
+        d.esShabat ? 230 : 255,
+        d.esShabat ? 238 : 255,
+        d.esShabat ? 252 : 255,
       );
       doc.rect(cx, y, colW, rowH, "F");
       doc.setDrawColor(...GOLD);
@@ -554,7 +835,7 @@ function generarPDF() {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(5.6);
       doc.text(fechaCorta(d.fechaGregoriana), cx + 3, y + 18);
-      doc.setTextColor(140, 115, 56);
+      doc.setTextColor(70, 110, 190);
       doc.setFontSize(5.4);
       doc.text(
         d.fechaHebreaTexto.split(" ").slice(0, 2).join(" "),

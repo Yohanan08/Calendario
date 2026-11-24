@@ -8,7 +8,7 @@
     />
     <title>Calendario del Eterno · Yeshúa La Torá Viviente</title>
     <link rel="manifest" href="manifest.json" />
-    <meta name="theme-color" content="#0b1a30" />
+    <meta name="theme-color" content="#0038b8" />
     <link rel="apple-touch-icon" href="icon-192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
@@ -18,13 +18,15 @@
     <meta name="apple-mobile-web-app-title" content="Cal. Eterno" />
     <style>
       :root {
-        --navy: #0b1a30;
-        --navy-2: #132542;
-        --gold: #bfa15f;
-        --gold-light: #e9dfc8;
-        --ivory: #faf8f5;
-        --texto: #2b2b2b;
-        --rojo: #7a1f1f;
+        /* Colores de la bandera de Israel */
+        --navy: #0038b8; /* azul de la bandera (tejelet) */
+        --navy-2: #002d93; /* azul más oscuro para las pestañas */
+        --gold: #0038b8; /* acento sobre fondo blanco */
+        --gold-light: #e6eefc; /* azul muy claro (Shabat, bordes) */
+        --sobre-azul: #ffffff; /* texto sobre fondo azul */
+        --ivory: #ffffff;
+        --texto: #1d2333;
+        --rojo: #00287f; /* fiestas: azul profundo */
         --radius: 14px;
       }
       * {
@@ -107,34 +109,58 @@
         flex: 1;
         min-width: 0;
       }
+      header.top {
+        border-bottom: 5px solid #fff;
+        box-shadow:
+          0 5px 0 var(--navy),
+          0 8px 12px rgba(0, 0, 0, 0.2);
+      }
+      header.top img {
+        max-width: 48%;
+        height: auto !important;
+        max-height: 34px;
+      }
+      header.top .reloj-header {
+        display: inline-block;
+        margin-top: 4px;
+        background: #fff;
+        color: var(--navy);
+        font-weight: 800;
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 14px;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
       header.top h1 {
         margin: 0;
         font-size: 15px;
         font-weight: 700;
-        color: var(--gold);
+        color: var(--sobre-azul);
         letter-spacing: 0.3px;
       }
       header.top p {
         margin: 0;
         font-size: 11px;
-        color: #cfd6e2;
+        color: #dbe5fb;
       }
 
       nav.tabs {
         display: flex;
         background: var(--navy-2);
         position: sticky;
-        top: 62px;
+        top: 72px;
         z-index: 19;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
       }
       nav.tabs button {
-        flex: 1;
-        min-width: 82px;
+        flex: 1 0 auto;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
         background: transparent;
         border: 0;
-        color: #b9c2d4;
+        color: #b8c9f0;
         padding: 11px 6px;
         font-size: 12.5px;
         font-weight: 600;
@@ -143,8 +169,8 @@
         white-space: nowrap;
       }
       nav.tabs button.activo {
-        color: var(--gold);
-        border-bottom-color: var(--gold);
+        color: #fff;
+        border-bottom-color: #fff;
       }
 
       main {
@@ -187,7 +213,7 @@
       }
       .nav-mes button {
         background: var(--navy);
-        color: var(--gold);
+        color: #fff;
         border: 0;
         border-radius: 10px;
         width: 42px;
@@ -227,7 +253,7 @@
       }
       .dia {
         background: #fff;
-        border: 1px solid #eee2c8;
+        border: 1px solid #d5e0f7;
         border-radius: 6px;
         min-height: 70px;
         padding: 3px 3px;
@@ -252,7 +278,7 @@
         display: block;
       }
       .dia .heb {
-        color: #8a7238;
+        color: #4a6fbf;
         font-size: 7.6px;
         display: block;
       }
@@ -281,7 +307,7 @@
         display: flex;
         gap: 10px;
         padding: 9px 4px;
-        border-bottom: 1px solid #f0e8d6;
+        border-bottom: 1px solid #e3eaf8;
         align-items: flex-start;
       }
       .evento-row:last-child {
@@ -292,7 +318,7 @@
         width: 52px;
         text-align: center;
         background: var(--navy);
-        color: var(--gold);
+        color: #fff;
         border-radius: 8px;
         padding: 6px 2px;
         font-size: 10.5px;
@@ -326,14 +352,14 @@
         color: var(--texto);
       }
       .advertencia-box {
-        background: #fdf6f0;
-        border: 1.5px solid var(--rojo);
+        background: #fdf3f3;
+        border: 1.5px solid #9b2222;
         border-radius: 10px;
         padding: 12px;
       }
       .advertencia-box h4 {
         margin: 0 0 6px 0;
-        color: var(--rojo);
+        color: #9b2222;
         font-size: 13.5px;
       }
       .advertencia-box p {
@@ -359,7 +385,7 @@
       }
       .tabla-estaciones td {
         padding: 7px;
-        border-bottom: 1px solid #f0e8d6;
+        border-bottom: 1px solid #e3eaf8;
       }
       .tabla-estaciones tr:nth-child(even) td {
         background: var(--gold-light);
@@ -390,7 +416,7 @@
         height: 20px;
       }
       footer.pie button {
-        background: var(--gold);
+        background: #fff;
         color: var(--navy);
         border: 0;
         border-radius: 20px;
@@ -406,7 +432,7 @@
       .badge-estacion {
         display: inline-block;
         background: var(--gold);
-        color: var(--navy);
+        color: #fff;
         font-weight: 800;
         font-size: 10.5px;
         padding: 2px 9px;
@@ -426,17 +452,273 @@
         color: var(--navy);
       }
 
+      /* ---- Día de hoy y vista "Hoy" ---- */
+      .dia.hoy {
+        background: var(--navy);
+        border-color: var(--navy);
+      }
+      .dia.hoy .num,
+      .dia.hoy .greg,
+      .dia.hoy .heb,
+      .dia.hoy .evt,
+      .dia.hoy .omer {
+        color: #fff;
+      }
+      .card-hoy {
+        background: linear-gradient(
+          #fff 0 8px,
+          var(--navy) 8px 20px,
+          #fff 20px calc(100% - 20px),
+          var(--navy) calc(100% - 20px) calc(100% - 8px),
+          #fff calc(100% - 8px)
+        );
+        text-align: center;
+        padding: 30px 14px;
+      }
+      .reloj-etiqueta,
+      .cita-etiqueta {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--navy);
+      }
+      .reloj-grande {
+        font-size: 44px;
+        font-weight: 800;
+        color: var(--navy);
+        font-variant-numeric: tabular-nums;
+        line-height: 1.1;
+        margin: 4px 0 8px;
+      }
+      .hoy-fecha {
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--texto);
+      }
+      .hoy-sub {
+        font-size: 11.5px;
+        color: #5b6478;
+        margin-top: 3px;
+      }
+      .hoy-evento {
+        margin-top: 10px;
+        font-weight: 800;
+        color: var(--navy);
+        font-size: 14px;
+      }
+      .hoy-omer {
+        margin-top: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #3d6a1f;
+      }
+      .hoy-nota {
+        margin-top: 10px;
+        background: var(--gold-light);
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 12px;
+        color: var(--texto);
+      }
+      .card-cita {
+        background: var(--navy);
+        color: #fff;
+        text-align: center;
+        border: none;
+      }
+      .card-cita .cita-etiqueta,
+      .card-cita .hoy-sub {
+        color: #dbe5fb;
+      }
+      .cita-nombre {
+        font-size: 17px;
+        font-weight: 800;
+        margin: 6px 0;
+      }
+      .cita-faltan {
+        font-size: 15px;
+        font-weight: 700;
+      }
+      .cita-faltan span {
+        font-size: 40px;
+        font-weight: 800;
+        vertical-align: middle;
+        margin-right: 4px;
+      }
+      .evento-row .fecha.cuenta {
+        font-size: 17px;
+        line-height: 1.05;
+      }
+      .evento-row .fecha.cuenta small {
+        display: block;
+        font-size: 9px;
+        font-weight: 700;
+      }
+
+      /* ---- Botones ---- */
+      .btn-azul,
+      .btn-blanco {
+        border: 0;
+        border-radius: 20px;
+        padding: 10px 16px;
+        font-weight: 800;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .btn-azul {
+        background: var(--navy);
+        color: #fff;
+        width: 100%;
+        margin-top: 12px;
+      }
+      .btn-blanco {
+        background: #fff;
+        color: var(--navy);
+      }
+      .cita-botones {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 12px;
+      }
+      .clicable,
+      .dia:not(.vacio) {
+        cursor: pointer;
+      }
+      .evento-row.clicable:active,
+      .dia:not(.vacio):active {
+        opacity: 0.7;
+      }
+
+      /* ---- Ficha de un día ---- */
+      .ficha-fondo {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 20, 70, 0.55);
+        z-index: 60;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+      }
+      .ficha {
+        background: #fff;
+        width: 100%;
+        max-width: 720px;
+        max-height: 85vh;
+        overflow-y: auto;
+        border-radius: 18px 18px 0 0;
+        padding-bottom: env(safe-area-inset-bottom, 0);
+        animation: subir 0.2s ease-out;
+      }
+      @keyframes subir {
+        from { transform: translateY(40px); opacity: 0; }
+        to { transform: none; opacity: 1; }
+      }
+      .ficha-cab {
+        background: var(--navy);
+        color: #fff;
+        padding: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+        border-bottom: 5px solid #fff;
+        box-shadow: 0 5px 0 var(--navy);
+        position: sticky;
+        top: 0;
+      }
+      .ficha-fecha {
+        font-size: 17px;
+        font-weight: 800;
+      }
+      .ficha-sub {
+        font-size: 12px;
+        color: #dbe5fb;
+        margin-top: 2px;
+      }
+      .ficha-cerrar {
+        background: #fff;
+        color: var(--navy);
+        border: 0;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        font-size: 15px;
+        font-weight: 800;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .ficha-cuerpo {
+        padding: 18px 16px 20px;
+      }
+      .ficha-ref {
+        font-size: 12px;
+        color: #5b6478;
+        line-height: 1.5;
+      }
+      .ficha-omer {
+        margin-top: 8px;
+        font-size: 12.5px;
+        font-weight: 700;
+        color: #3d6a1f;
+      }
+      .ficha-eventos {
+        margin: 12px 0 0;
+        padding-left: 18px;
+        color: var(--navy);
+        font-weight: 700;
+        font-size: 13.5px;
+        line-height: 1.5;
+      }
+      .ficha-fiesta {
+        margin-top: 14px;
+        background: var(--gold-light);
+        border-left: 4px solid var(--navy);
+        border-radius: 10px;
+        padding: 12px;
+      }
+      .ficha-fiesta h4 {
+        margin: 0 0 6px;
+        color: var(--navy);
+        font-size: 14.5px;
+      }
+      .ficha-fiesta p {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .ficha-citas {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 9px;
+      }
+      .ficha-citas span {
+        background: #fff;
+        color: var(--navy);
+        border: 1px solid #c3d3f3;
+        border-radius: 12px;
+        padding: 3px 9px;
+        font-size: 11.5px;
+        font-weight: 700;
+      }
+      .ficha-vacio {
+        font-size: 13px;
+        color: #5b6478;
+      }
+
       .toast {
         position: fixed;
         bottom: 70px;
         left: 50%;
         transform: translateX(-50%);
         background: var(--navy);
-        color: var(--gold);
+        color: #fff;
         padding: 10px 18px;
         border-radius: 20px;
         font-size: 12.5px;
-        z-index: 50;
+        z-index: 70;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
       }
     </style>
@@ -448,11 +730,13 @@
         <div class="titulos">
           <h1>CALENDARIO DEL ETERNO</h1>
           <p>364 días · Yeshúa — La Torá Viviente</p>
+          <div class="reloj-header" id="relojHeader">Jerusalén --:--</div>
         </div>
       </header>
 
       <nav class="tabs">
-        <button data-tab="mes" class="activo">Mes</button>
+        <button data-tab="hoy" class="activo">Hoy</button>
+        <button data-tab="mes">Mes</button>
         <button data-tab="resumen">Resumen del año</button>
         <button data-tab="advertencia">Advertencia</button>
         <button data-tab="fuentes">Fuentes</button>

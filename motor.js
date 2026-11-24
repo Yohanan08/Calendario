@@ -125,10 +125,10 @@ const NOMBRES_MESES_BIBLICOS = [
   "Mes 6",
   "Mes 7 · Yom Teruah/ Yom Kipur / Sukot",
   "Mes 8",
-  "Mes 9",
+  "Mes 9 · Janucá",
   "Mes 10",
   "Mes 11",
-  "Mes 12 · Cosecha",
+  "Mes 12 · Purim / Cosecha",
 ];
 
 function eventosFijos() {
@@ -177,6 +177,22 @@ function eventosFijos() {
   agregar(7, 15, "Sukot · 1er día (Convocación Kadosh)");
   for (let d = 16; d <= 21; d++) agregar(7, d, "Sukot", false);
   agregar(7, 22, "Sukot · 8vo día / Clausura (Convocación Kadosh)");
+
+  // Janucá · Fiesta de la Dedicación (Yojanán 10:22) — 8 días desde el 25 del mes 9
+  // El mes 9 tiene 31 días, así que el 8vo día cae el 1 del mes 10.
+  for (let n = 1; n <= 8; n++) {
+    const mes = n <= 7 ? 9 : 10;
+    const dia = n <= 7 ? 24 + n : 1;
+    const nombre =
+      n === 1
+        ? "Janucá · Fiesta de la Dedicación · 1ª luz"
+        : `Janucá · ${n}ª luz`;
+    agregar(mes, dia, nombre, false);
+  }
+
+  // Purim (Ester 9:17-21) — 14 y 15 del mes 12
+  agregar(12, 14, "Purim (Ester 9)", false);
+  agregar(12, 15, "Shushán Purim", false);
 
   agregar(12, 29, "Fiesta de la Cosecha (fin del año agrícola)");
   return ev;
@@ -277,4 +293,322 @@ function fechaCorta(f) {
 }
 function fechaLarga(f) {
   return `${f.getUTCDate()} de ${MESES_GREGORIANOS[f.getUTCMonth()]} de ${f.getUTCFullYear()}`;
+}
+
+// ---------------------------------------------------------------------
+// 4. HORA DE JERUSALÉN, PUESTA DEL SOL Y CUENTAS REGRESIVAS
+// ---------------------------------------------------------------------
+const ZONA_JERUSALEN = "Asia/Jerusalem";
+const LAT_JERUSALEN = 31.7683;
+const LON_JERUSALEN = 35.2137;
+
+// Partes de fecha/hora actuales en Jerusalén (sin depender de la zona del celular)
+function ahoraEnJerusalen(ahora = new Date()) {
+  const fmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: ZONA_JERUSALEN,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+  const p = {};
+  fmt.formatToParts(ahora).forEach((x) => (p[x.type] = x.value));
+  const anio = +p.year,
+    mes = +p.month,
+    dia = +p.day;
+  const hora = +p.hour,
+    minuto = +p.minute,
+    segundo = +p.second;
+  // Diferencia de Jerusalén con UTC en minutos (2 h invierno / 3 h verano)
+  const comoUTC = Date.UTC(anio, mes - 1, dia, hora, minuto, segundo);
+  const offsetMin = Math.round((comoUTC - ahora.getTime()) / 60000);
+  return {
+    anio,
+    mes,
+    dia,
+    hora,
+    minuto,
+    segundo,
+    offsetMin,
+    fechaUTC: new Date(Date.UTC(anio, mes - 1, dia)), // fecha civil de Jerusalén
+  };
+}
+
+// Puesta del sol (algoritmo NOAA simplificado), devuelve minutos UTC del día
+function puestaDelSolMinutosUTC(fechaUTC, lat = LAT_JERUSALEN, lon = LON_JERUSALEN) {
+  const rad = Math.PI / 180;
+  const inicioAnio = Date.UTC(fechaUTC.getUTCFullYear(), 0, 1);
+  const n = Math.floor((fechaUTC.getTime() - inicioAnio) / 86400000) + 1;
+  const g = ((2 * Math.PI) / 365) * (n - 1 + 0.5);
+  const eqTiempo =
+    229.18 *
+    (0.000075 +
+      0.001868 * Math.cos(g) -
+      0.032077 * Math.sin(g) -
+      0.014615 * Math.cos(2 * g) -
+      0.040849 * Math.sin(2 * g));
+  const decl =
+    0.006918 -
+    0.399912 * Math.cos(g) +
+    0.070257 * Math.sin(g) -
+    0.006758 * Math.cos(2 * g) +
+    0.000907 * Math.sin(2 * g) -
+    0.002697 * Math.cos(3 * g) +
+    0.00148 * Math.sin(3 * g);
+  const cosH =
+    Math.cos(90.833 * rad) / (Math.cos(lat * rad) * Math.cos(decl)) -
+    Math.tan(lat * rad) * Math.tan(decl);
+  const H = Math.acos(Math.max(-1, Math.min(1, cosH))) / rad;
+  return 720 - 4 * (lon - H) - eqTiempo;
+}
+
+function puestaDelSolJerusalen(j) {
+  const minUTC = puestaDelSolMinutosUTC(j.fechaUTC);
+  const minLocal = Math.round(minUTC + j.offsetMin);
+  return { hora: Math.floor(minLocal / 60), minuto: minLocal % 60, totalMin: minLocal };
+}
+
+function diasEntre(aUTC, bUTC) {
+  return Math.round((bUTC.getTime() - aUTC.getTime()) / 86400000);
+}
+
+// Busca el día del calendario bíblico que corresponde a una fecha civil
+function buscarDiaBiblico(fechaUTC) {
+  let anio = fechaUTC.getUTCFullYear();
+  if (fechaUTC < inicioAnoBiblico(anio)) anio--;
+  const dias = construirAno(anio);
+  const idx = diasEntre(dias[0].fechaGregoriana, fechaUTC);
+  if (idx < 0 || idx >= dias.length) return null; // posible "semana intercalar" entre años
+  return { anio, dia: dias[idx] };
+}
+
+// Fiestas principales para las cuentas regresivas
+const FIESTAS_PRINCIPALES = [
+  { mes: 1, dia: 14, nombre: "Pesaj" },
+  { mes: 1, dia: 15, nombre: "Panes sin Levadura" },
+  { mes: 1, dia: 19, nombre: "Bikurim · Primicias de la Cebada" },
+  { mes: 3, dia: 8, nombre: "Shavuot · Día del Pacto" },
+  { mes: 4, dia: 26, nombre: "Primicias del Vino" },
+  { mes: 6, dia: 15, nombre: "Primicias del Aceite" },
+  { mes: 7, dia: 1, nombre: "Yom Teruá" },
+  { mes: 7, dia: 10, nombre: "Yom Kipur" },
+  { mes: 7, dia: 15, nombre: "Sukot" },
+  { mes: 9, dia: 25, nombre: "Janucá" },
+  { mes: 12, dia: 14, nombre: "Purim" },
+];
+
+// Próxima ocurrencia (hoy incluido) de un mes/día bíblico, a partir de una fecha civil
+function proximaOcurrencia(mes, dia, desdeUTC) {
+  let anio = desdeUTC.getUTCFullYear() - 1;
+  for (let i = 0; i < 3; i++, anio++) {
+    const inicio = inicioAnoBiblico(anio);
+    const f = new Date(inicio.getTime());
+    f.setUTCDate(f.getUTCDate() + diaDelAnoDesdeMesDia(mes, dia) - 1);
+    const faltan = diasEntre(desdeUTC, f);
+    if (faltan >= 0) return { fecha: f, faltan, anio };
+  }
+  return null;
+}
+
+function cuentasRegresivas(desdeUTC) {
+  return FIESTAS_PRINCIPALES.map((fz) => ({
+    ...fz,
+    ...proximaOcurrencia(fz.mes, fz.dia, desdeUTC),
+  })).sort((a, b) => a.faltan - b.faltan);
+}
+
+// Próxima cita designada (cualquier día con evento, hoy excluido)
+function proximaCitaDesignada(desdeUTC) {
+  let anio = desdeUTC.getUTCFullYear() - 1;
+  for (let i = 0; i < 3; i++, anio++) {
+    const dias = construirAno(anio);
+    for (const d of dias) {
+      if (!d.eventos.length) continue;
+      const faltan = diasEntre(desdeUTC, d.fechaGregoriana);
+      if (faltan > 0) return { dia: d, faltan };
+    }
+  }
+  return null;
+}
+
+function textoFaltan(n) {
+  if (n === 0) return "¡Es hoy!";
+  if (n === 1) return "Falta 1 día";
+  return `Faltan ${n} días`;
+}
+
+// ---------------------------------------------------------------------
+// 5. FICHAS DE LAS FIESTAS (explicación y versículos)
+// ---------------------------------------------------------------------
+// Se busca por palabra clave dentro del nombre del evento.
+const FICHAS_FIESTAS = [
+  {
+    clave: "Pesaj",
+    titulo: "Pesaj · La Pascua",
+    texto:
+      "Memorial de la liberación de Egipto. Al caer la tarde del día 14 del mes 1 se sacrifica el cordero. Yeshúa es nuestro Cordero de Pesaj.",
+    citas: ["Éxodo 12", "Vaicra-Levítico 23:5", "1 Corintios 5:7"],
+  },
+  {
+    clave: "Panes sin Levadura",
+    titulo: "Jag HaMatzot · Panes sin Levadura",
+    texto:
+      "Siete días comiendo pan sin levadura, del 15 al 21 del mes 1. El primero y el último son convocación kadosh.",
+    citas: ["Éxodo 12:15-20", "Vaicra-Levítico 23:6-8", "Devarim-Deuteronomio 16:3-8"],
+  },
+  {
+    clave: "Vikurim",
+    titulo: "Bikurim · Primicias de la Cebada",
+    texto:
+      "Se mece la gavilla de las primicias el día después del Shabat de Matzá. Aquí comienza el conteo del Omer: 50 días hasta Shavuot. Yeshúa resucitó como primicia de los que duermen.",
+    citas: ["Vaicra-Levítico 23:9-14", "1 Corintios 15:20-23"],
+  },
+  {
+    clave: "Primicias del Trigo",
+    titulo: "Shavuot · Primicias del Trigo · Día del Pacto",
+    texto:
+      "Al terminar el conteo de siete semanas se presentan las primicias del trigo. Es el día en que se renueva el Pacto.",
+    citas: ["Vaicra-Levítico 23:15-21", "Éxodo 19", "Jubileos 6:17-21", "Hechos 2:1-4"],
+  },
+  {
+    clave: "Primicias del Vino",
+    titulo: "Shavuot · Primicias del Vino",
+    texto:
+      "Cincuenta días después de Shavuot del trigo se presentan las primicias del vino nuevo.",
+    citas: ["Rollo del Templo (11QT) 19-21"],
+  },
+  {
+    clave: "Primicias del Aceite",
+    titulo: "Shavuot · Primicias del Aceite",
+    texto:
+      "Cincuenta días después de las primicias del vino se presentan las primicias del aceite nuevo.",
+    citas: ["Rollo del Templo (11QT) 21-22"],
+  },
+  {
+    clave: "Ofrenda de la lena",
+    titulo: "Ofrenda de la leña",
+    texto:
+      "Días en que las tribus traían la leña para el fuego del altar, que no debía apagarse.",
+    citas: ["Nehemías 10:34", "Nehemías 13:31", "Rollo del Templo (11QT) 23-25"],
+  },
+  {
+    clave: "Yom Terua",
+    titulo: "Yom Teruá · Día del Toque de Trompetas",
+    texto:
+      "Día de reposo y memorial con toque de shofar, el 1 del mes 7. Comienzan los días solemnes del séptimo mes.",
+    citas: ["Vaicra-Levítico 23:23-25", "Bamidbar-Números 29:1-6"],
+  },
+  {
+    clave: "Yom Kipur",
+    titulo: "Yom Kipur · Día de la Expiación",
+    texto:
+      "Día de ayuno y de afligir el alma, el 10 del mes 7. El Sumo Sacerdote entraba al Lugar Santísimo.",
+    citas: ["Vaicra-Levítico 16", "Vaicra-Levítico 23:26-32", "Hebreos 9:11-12"],
+  },
+  {
+    clave: "Sukot",
+    titulo: "Sukot · Fiesta de los Tabernáculos",
+    texto:
+      "Siete días habitando en cabañas, del 15 al 21 del mes 7, y el octavo día de clausura (Sheminí Atzéret).",
+    citas: ["Vaicra-Levítico 23:33-43", "Devarim-Deuteronomio 16:13-15", "Yojanán-Juan 7:37-39"],
+  },
+  {
+    clave: "Janucá",
+    titulo: "Janucá · Fiesta de la Dedicación",
+    texto:
+      "Ocho días de luz en memoria de la purificación y dedicación del Templo. Yeshúa estuvo en el Templo durante esta fiesta.",
+    citas: ["Yojanán-Juan 10:22-23", "1 Macabeos 4:52-59"],
+  },
+  {
+    clave: "Purim",
+    titulo: "Purim",
+    texto:
+      "Memorial de la salvación del pueblo en los días de Ester y Mardoqueo. Se celebra con alegría, banquete y envío de porciones.",
+    citas: ["Ester 9:17-32"],
+  },
+  {
+    clave: "Memorial de Noé",
+    titulo: "Rosh Hodesh · Memorial de Noé",
+    texto:
+      "Los cuatro días memoriales que marcan el inicio de cada estación, siempre en miércoles.",
+    citas: ["Bereshit-Génesis 7:11", "Bereshit-Génesis 8:4-5", "Jubileos 6:23-29"],
+  },
+];
+
+const FICHA_SHABAT = {
+  titulo: "Shabat",
+  texto: "El séptimo día, día de reposo santificado por Adonái desde la creación.",
+  citas: ["Bereshit-Génesis 2:2-3", "Éxodo 20:8-11", "Isaías 58:13-14"],
+};
+
+function fichasDelDia(d) {
+  const fichas = [];
+  d.eventos.forEach((ev) => {
+    const f = FICHAS_FIESTAS.find((x) => ev.includes(x.clave));
+    if (f && !fichas.includes(f)) fichas.push(f);
+  });
+  if (d.esShabat) fichas.push(FICHA_SHABAT);
+  return fichas;
+}
+
+// ---------------------------------------------------------------------
+// 6. AVISOS (notificaciones) — se usan en la página y en el service worker
+// ---------------------------------------------------------------------
+function isoFecha(f) {
+  return f.toISOString().slice(0, 10);
+}
+
+function avisosDeHoy(ahora = new Date()) {
+  const j = ahoraEnJerusalen(ahora);
+  const hoy = buscarDiaBiblico(j.fechaUTC);
+  const manana = buscarDiaBiblico(new Date(j.fechaUTC.getTime() + 86400000));
+  const iso = isoFecha(j.fechaUTC);
+  const avisos = [];
+  if (hoy && hoy.dia.eventos.length) {
+    avisos.push({
+      clave: "hoy-" + iso,
+      titulo: "Hoy: " + hoy.dia.eventos.join(" / "),
+      cuerpo: `Mes ${hoy.dia.mes}, día ${hoy.dia.diaDelMes} · Calendario del Eterno`,
+    });
+  }
+  if (manana && manana.dia.eventos.length) {
+    avisos.push({
+      clave: "manana-" + iso,
+      titulo: "Mañana: " + manana.dia.eventos.join(" / "),
+      cuerpo: `Mes ${manana.dia.mes}, día ${manana.dia.diaDelMes} · Comienza hoy al ponerse el sol`,
+    });
+  }
+  if (j.fechaUTC.getUTCDay() === 5) {
+    const sol = puestaDelSolJerusalen(j);
+    const hh = String(sol.hora).padStart(2, "0"),
+      mm = String(sol.minuto).padStart(2, "0");
+    avisos.push({
+      clave: "shabat-" + iso,
+      titulo: "Hoy comienza el Shabat",
+      cuerpo: `Al ponerse el sol · En Jerusalén: ${hh}:${mm}. ¡Shabat Shalom!`,
+    });
+  }
+  return avisos;
+}
+
+// Envía los avisos que todavía no se han enviado (se recuerdan en la caché)
+async function enviarAvisosPendientes(registro) {
+  try {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const cache = await caches.open("avisos-enviados");
+    for (const a of avisosDeHoy()) {
+      const url = "./__aviso/" + a.clave;
+      if (await cache.match(url)) continue;
+      await registro.showNotification(a.titulo, {
+        body: a.cuerpo,
+        icon: "icon-192.png",
+        badge: "icon-192.png",
+        tag: a.clave,
+      });
+      await cache.put(url, new Response("1"));
+    }
+  } catch (e) {}
 }
